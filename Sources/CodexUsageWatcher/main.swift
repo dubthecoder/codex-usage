@@ -383,59 +383,60 @@ struct UsagePanel: View {
         VStack(spacing: 12) {
             header
 
+            Divider()
+                .opacity(0.6)
+
             if let error = store.snapshot.error {
                 Text(error)
-                    .font(.system(.callout).weight(.semibold))
-                    .foregroundStyle(OpenAITheme.warning)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(Color(nsColor: .systemRed))
+                    .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, minHeight: 170)
             } else if let status = store.snapshot.codexStatus {
                 UsageMeter(
                     percent: (status.primary?.usedPercent ?? 0) / 100,
                     label: "Current",
                     resetText: resetText(for: status.primary, now: store.snapshot.generatedAt),
-                    detailText: windowLabel(status.primary),
-                    accent: OpenAITheme.green
+                    detailText: windowLabel(status.primary)
                 )
 
                 UsageMeter(
                     percent: (status.secondary?.usedPercent ?? 0) / 100,
                     label: "Weekly",
                     resetText: resetText(for: status.secondary, now: store.snapshot.generatedAt),
-                    detailText: windowLabel(status.secondary),
-                    accent: OpenAITheme.mint
+                    detailText: windowLabel(status.secondary)
                 )
 
                 compactStats(status)
             } else {
                 Text("Open Codex /status once to populate usage")
-                    .font(.system(.callout).weight(.semibold))
-                    .foregroundStyle(OpenAITheme.subtext)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, minHeight: 170)
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 16)
-        .frame(width: 400, height: 470)
-        .background {
-            ZStack {
-                VisualEffectBackground(material: .popover, blendingMode: .behindWindow)
-                Rectangle().fill(OpenAITheme.faceTint)
-            }
-        }
+        .padding(.top, 12)
+        .padding(.bottom, 16)
+        .frame(width: 360)
+        .background(VisualEffectBackground(material: .hudWindow, blendingMode: .behindWindow))
     }
 
     private var header: some View {
-        HStack(alignment: .center) {
-            HStack(spacing: 10) {
-                codexGlyph
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Codex Usage")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(OpenAITheme.text)
-                    Text("Updated \(store.snapshot.generatedAt.formatted(date: .omitted, time: .shortened))")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(OpenAITheme.dim)
-                }
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "gauge.with.dots.needle.50percent")
+                .symbolRenderingMode(.hierarchical)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 22, height: 22)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Codex Usage")
+                    .font(.headline)
+                Text("Updated \(store.snapshot.generatedAt.formatted(date: .omitted, time: .shortened))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
@@ -444,75 +445,45 @@ struct UsagePanel: View {
                 store.refresh()
             } label: {
                 Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(OpenAITheme.text)
             }
             .buttonStyle(.borderless)
-            .frame(width: 30, height: 30)
-            .background(OpenAITheme.panelSoft, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .stroke(OpenAITheme.hairline, lineWidth: 1)
-            )
+            .controlSize(.regular)
+            .help("Refresh usage")
             .accessibilityLabel("Refresh usage")
         }
     }
 
-    private var codexGlyph: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(OpenAITheme.panel)
-                .frame(width: 34, height: 34)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(OpenAITheme.hairline, lineWidth: 1)
-                )
-            Image(systemName: "terminal")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(OpenAITheme.green)
-        }
-    }
-
     private func compactStats(_ status: CodexStatus) -> some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                statPill("Plan", status.planType ?? "unknown", "Codex")
-                statPill("Last", formatTokens(status.lastUsage.total), "turn")
-            }
-
-            HStack(spacing: 8) {
-                statPill("Session", formatTokens(status.totalUsage.total), "tokens")
-                statPill("Context", formatTokens(status.modelContextWindow ?? 0), "window")
-            }
-        }
-    }
-
-    private func statPill(_ title: String, _ value: String, _ detail: String) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(OpenAITheme.dim)
-                Text(value)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(OpenAITheme.text)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-            }
-            Spacer(minLength: 4)
-            Text(detail)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(OpenAITheme.subtext)
-                .lineLimit(1)
+        VStack(spacing: 6) {
+            statRow("Plan", value: (status.planType ?? "unknown").capitalized)
+            Divider().opacity(0.4)
+            statRow("Last turn", value: "\(formatTokens(status.lastUsage.total)) tokens")
+            Divider().opacity(0.4)
+            statRow("Session", value: "\(formatTokens(status.totalUsage.total)) tokens")
+            Divider().opacity(0.4)
+            statRow("Context window", value: formatTokens(status.modelContextWindow ?? 0))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .frame(maxWidth: .infinity)
-        .background(OpenAITheme.panelSoft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .background(.background.opacity(0.35), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(OpenAITheme.hairline, lineWidth: 1)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5)
         )
+    }
+
+    private func statRow(_ title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 8)
+            Text(value)
+                .font(.system(size: 12, weight: .medium))
+                .monospacedDigit()
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+        }
     }
 
     private func resetText(for limit: CodexRateLimit?, now: Date) -> String {
@@ -540,70 +511,62 @@ struct UsageMeter: View {
     let label: String
     let resetText: String
     let detailText: String
-    let accent: Color
+
+    private var clampedPercent: Double { min(max(percent, 0), 1) }
+
+    private var accent: Color {
+        switch clampedPercent {
+        case ..<0.6: return Color(nsColor: .systemGreen)
+        case ..<0.85: return Color(nsColor: .systemYellow)
+        default: return Color(nsColor: .systemRed)
+        }
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text("\(Int((percent * 100).rounded()))%")
-                    .font(.system(size: 36, weight: .bold))
-                    .foregroundStyle(OpenAITheme.text)
+                Text(label)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
 
                 Spacer()
 
-                Text(label)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(OpenAITheme.text)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(OpenAITheme.badge, in: Capsule())
+                Text("\(Int((clampedPercent * 100).rounded()))%")
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(.primary)
             }
 
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(OpenAITheme.track)
+                        .fill(Color(nsColor: .quaternaryLabelColor))
                     Capsule()
                         .fill(accent)
-                        .frame(width: max(8, proxy.size.width * percent))
-                        .shadow(color: accent.opacity(0.35), radius: 5)
+                        .frame(width: max(4, proxy.size.width * clampedPercent))
                 }
             }
-            .frame(height: 12)
+            .frame(height: 6)
 
             HStack {
                 Text(resetText)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(OpenAITheme.text)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
                 Spacer()
                 Text(detailText)
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundStyle(OpenAITheme.dim)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.tertiary)
             }
         }
-        .padding(14)
-        .background(OpenAITheme.panel, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(12)
+        .background(.background.opacity(0.35), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(OpenAITheme.hairline, lineWidth: 1)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5)
         )
     }
-}
-
-enum OpenAITheme {
-    static let faceTint = Color(red: 0.038, green: 0.043, blue: 0.040, opacity: 0.30)
-    static let panel = Color(red: 0.142, green: 0.154, blue: 0.146, opacity: 0.46)
-    static let panelSoft = Color(red: 0.090, green: 0.098, blue: 0.093, opacity: 0.34)
-    static let badge = Color(red: 0.255, green: 0.286, blue: 0.267, opacity: 0.56)
-    static let track = Color(red: 0.470, green: 0.520, blue: 0.490, opacity: 0.45)
-    static let hairline = Color(red: 0.820, green: 0.880, blue: 0.830, opacity: 0.10)
-    static let edge = Color(red: 0.315, green: 0.355, blue: 0.334, opacity: 0.45)
-    static let text = Color(red: 0.930, green: 0.950, blue: 0.925)
-    static let subtext = Color(red: 0.690, green: 0.735, blue: 0.700)
-    static let dim = Color(red: 0.500, green: 0.540, blue: 0.510)
-    static let green = Color(red: 0.063, green: 0.639, blue: 0.498)
-    static let mint = Color(red: 0.660, green: 0.880, blue: 0.745)
-    static let warning = Color(red: 0.925, green: 0.412, blue: 0.320)
 }
 
 struct VisualEffectBackground: NSViewRepresentable {
@@ -615,7 +578,6 @@ struct VisualEffectBackground: NSViewRepresentable {
         view.material = material
         view.blendingMode = blendingMode
         view.state = .active
-        view.isEmphasized = true
         return view
     }
 
@@ -623,7 +585,6 @@ struct VisualEffectBackground: NSViewRepresentable {
         view.material = material
         view.blendingMode = blendingMode
         view.state = .active
-        view.isEmphasized = true
     }
 }
 
@@ -697,46 +658,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let button = statusItem.button else { return }
         button.action = #selector(togglePopover)
         button.target = self
-        button.image = NSImage(systemSymbolName: "waveform.path.ecg", accessibilityDescription: "Codex Usage")
+        let image = NSImage(
+            systemSymbolName: "gauge.with.dots.needle.50percent",
+            accessibilityDescription: "Codex Usage"
+        )
+        image?.isTemplate = true
+        button.image = image
         button.imagePosition = .imageLeading
+        button.imageHugsTitle = true
     }
 
     private func configurePopover() {
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 400, height: 470)
-        popover.appearance = NSAppearance(named: .darkAqua)
+        popover.contentSize = NSSize(width: 360, height: 420)
         let controller = NSHostingController(rootView: UsagePanel(store: store))
-        makeHostingViewTransparent(controller.view)
         popover.contentViewController = controller
     }
 
     private func configureWindow() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 470),
-            styleMask: [.titled, .closable, .miniaturizable],
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 420),
+            styleMask: [.titled, .closable, .utilityWindow, .nonactivatingPanel, .hudWindow],
             backing: .buffered,
             defer: false
         )
 
-        window.title = "Codex Usage"
-        window.isMovableByWindowBackground = true
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.appearance = NSAppearance(named: .darkAqua)
-        window.minSize = NSSize(width: 400, height: 470)
-        window.maxSize = NSSize(width: 400, height: 470)
-        window.setContentSize(NSSize(width: 400, height: 470))
-        window.center()
-        window.isReleasedWhenClosed = false
-        let controller = NSHostingController(rootView: UsagePanel(store: store))
-        makeHostingViewTransparent(controller.view)
-        window.contentViewController = controller
-        self.window = window
-    }
+        panel.title = "Codex Usage"
+        panel.titleVisibility = .visible
+        panel.titlebarAppearsTransparent = true
+        panel.isFloatingPanel = true
+        panel.becomesKeyOnlyIfNeeded = true
+        panel.hidesOnDeactivate = false
+        panel.isMovableByWindowBackground = true
+        panel.isReleasedWhenClosed = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.center()
 
-    private func makeHostingViewTransparent(_ view: NSView) {
-        view.wantsLayer = true
-        view.layer?.backgroundColor = NSColor.clear.cgColor
+        let controller = NSHostingController(rootView: UsagePanel(store: store))
+        panel.contentViewController = controller
+        self.window = panel
     }
 
     private func showWindow() {
@@ -747,13 +707,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateStatusTitle(_ snapshot: UsageSnapshot) {
         DispatchQueue.main.async {
-            if let error = snapshot.error {
-                self.statusItem.button?.title = " Codex: \(error)"
+            guard let button = self.statusItem.button else { return }
+
+            let title: String
+            if snapshot.error != nil {
+                title = "—"
             } else if let percent = snapshot.codexStatus?.primary?.usedPercent {
-                self.statusItem.button?.title = " \(Int(percent.rounded()))%"
+                title = " \(Int(percent.rounded()))%"
             } else {
-                self.statusItem.button?.title = " /status"
+                title = " —"
             }
+
+            let font = NSFont.monospacedDigitSystemFont(ofSize: 0, weight: .medium)
+            button.attributedTitle = NSAttributedString(
+                string: title,
+                attributes: [.font: font]
+            )
         }
     }
 
