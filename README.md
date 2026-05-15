@@ -13,6 +13,20 @@ It reads Codex's locally-saved `/status` events from `~/.codex/sessions/**/*.jso
 
 The app does not read or display auth tokens. It only scans saved log lines and session event lines whose payload type is `token_count`.
 
+## Download
+
+Grab the latest `.app` from the [Releases page](../../releases/latest) — no toolchain required.
+
+1. Download `Codex-Usage-Watcher-<version>.zip`.
+2. Unzip and drag **Codex Usage Watcher.app** into `/Applications`.
+3. First launch: **right-click → Open → Open**. The build is ad-hoc signed (not notarized), so macOS will warn once that the developer is unidentified.
+
+If macOS refuses to launch it ("app is damaged and can't be opened"), strip the quarantine flag once:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Codex Usage Watcher.app"
+```
+
 ## UI
 
 - **Menu-bar item.** A template SF Symbol (`gauge.with.dots.needle.50percent`) next to the current `/status` percent in monospaced digits. The icon auto-tints with the menu bar.
