@@ -23,7 +23,7 @@ jobs:
         include:
           - language: swift
             runner: macos-14
-            build-mode: none
+            build-mode: manual
           - language: actions
             runner: ubuntu-latest
             build-mode: none
@@ -36,6 +36,16 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+
+      - name: Build Swift sources (minimal, no icon)
+        if: matrix.build-mode == 'manual'
+        run: |
+          swiftc \
+            -target arm64-apple-macosx14.0 \
+            -framework AppKit \
+            -framework SwiftUI \
+            Sources/CodexUsageWatcher/main.swift \
+            -o /tmp/codeql-build-output
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
