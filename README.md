@@ -29,8 +29,8 @@ xattr -dr com.apple.quarantine "/Applications/Codex Usage Watcher.app"
 
 ## UI
 
-- **Menu-bar item.** A template SF Symbol (`gauge.with.dots.needle.50percent`) next to the current `/status` percent in monospaced digits. The icon auto-tints with the menu bar.
-- **Floating panel.** A HUD-style `NSPanel` (utility window, non-activating, joins all spaces) that follows the system appearance (light/dark). Clicking the menu-bar icon also toggles a transient popover with the same content.
+- **Menu-bar item.** A template SF Symbol (`gauge.with.dots.needle.50percent`) next to the current `/status` percent in monospaced digits. The icon auto-tints with the menu bar, and the app runs as an agent utility without a Dock icon.
+- **Usage panel.** Clicking the menu-bar item opens the usage panel directly. Refresh and Quit controls live in the same panel header.
 - **Native styling.** Semantic system colors throughout — `.primary` / `.secondary` for text, `Color(nsColor: .separatorColor)` for chrome, and the meter accent escalates green → yellow → red as usage rises.
 
 ## Build
@@ -53,7 +53,7 @@ Build requirements: Swift toolchain (Xcode command-line tools), macOS 14+, Apple
 open "build/Codex Usage Watcher.app"
 ```
 
-On first launch, open Codex and run `/status` at least once so Codex writes a `token_count` event into its session log — otherwise the panel shows "Open Codex /status once to populate usage". The watcher polls both source files every 30 seconds; the refresh button forces an immediate re-read.
+On first launch, open Codex and run `/status` at least once so Codex writes a `token_count` event into its session log — otherwise the panel shows "Open Codex /status once to populate usage". The watcher polls both source files every 30 seconds; the panel's Refresh action forces an immediate re-read.
 
 ## Verify Data Parsing
 

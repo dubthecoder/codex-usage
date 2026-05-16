@@ -378,6 +378,7 @@ private struct StatusRateLimit: Decodable {
 
 struct UsagePanel: View {
     @ObservedObject var store: UsageStore
+    var onQuit: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -450,6 +451,18 @@ struct UsagePanel: View {
             .controlSize(.regular)
             .help("Refresh usage")
             .accessibilityLabel("Refresh usage")
+
+            if let onQuit {
+                Button {
+                    onQuit()
+                } label: {
+                    Image(systemName: "power")
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.regular)
+                .help("Quit Codex Usage Watcher")
+                .accessibilityLabel("Quit Codex Usage Watcher")
+            }
         }
     }
 
@@ -488,6 +501,9 @@ struct UsagePanel: View {
 
     private func resetText(for limit: CodexRateLimit?, now: Date) -> String {
         guard let limit else { return "Reset unavailable" }
+        if limit.resetsAt <= now {
+            return "Reset window elapsed"
+        }
         return "Resets in \(compactDuration(from: now, to: limit.resetsAt))"
     }
 
@@ -626,7 +642,13 @@ func compactDuration(from start: Date, to end: Date) -> String {
     if hours > 0 {
         return "\(hours)h \(minutes)m"
     }
-    return "\(minutes)m"
+    if minutes > 0 {
+        return "\(minutes)m"
+    }
+    if seconds > 0 {
+        return "<1m"
+    }
+    return "now"
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -634,23 +656,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let popover = NSPopover()
     private let store = UsageStore()
     private var statusCancellable: AnyCancellable?
-    private var window: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         store.start()
         configureStatusItem()
         configurePopover()
-        configureWindow()
 
         statusCancellable = store.$snapshot.sink { [weak self] snapshot in
             self?.updateStatusTitle(snapshot)
         }
-
-        showWindow()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        showWindow()
+        showPopover()
         return true
     }
 
@@ -671,37 +689,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func configurePopover() {
         popover.behavior = .transient
         popover.contentSize = NSSize(width: 360, height: 420)
-        let controller = NSHostingController(rootView: UsagePanel(store: store))
+        let controller = NSHostingController(rootView: UsagePanel(store: store) { [weak self] in
+            self?.quitFromPanel()
+        })
         popover.contentViewController = controller
     }
 
-    private func configureWindow() {
-        let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 360, height: 420),
-            styleMask: [.titled, .closable, .utilityWindow, .nonactivatingPanel, .hudWindow],
-            backing: .buffered,
-            defer: false
-        )
-
-        panel.title = "Codex Usage"
-        panel.titleVisibility = .visible
-        panel.titlebarAppearsTransparent = true
-        panel.isFloatingPanel = true
-        panel.becomesKeyOnlyIfNeeded = true
-        panel.hidesOnDeactivate = false
-        panel.isMovableByWindowBackground = true
-        panel.isReleasedWhenClosed = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.center()
-
-        let controller = NSHostingController(rootView: UsagePanel(store: store))
-        panel.contentViewController = controller
-        self.window = panel
-    }
-
-    private func showWindow() {
+    private func showPopover() {
+        guard let button = statusItem.button else { return }
         store.refresh()
-        window?.makeKeyAndOrderFront(nil)
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -727,15 +724,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func togglePopover() {
-        guard let button = statusItem.button else { return }
-
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            store.refresh()
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            NSApp.activate(ignoringOtherApps: true)
+            showPopover()
         }
+    }
+
+    private func quitFromPanel() {
+        NSApp.terminate(nil)
     }
 
 }
@@ -775,5 +772,5 @@ if CommandLine.arguments.contains("--snapshot") {
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
-app.setActivationPolicy(.regular)
+app.setActivationPolicy(.accessory)
 app.run()

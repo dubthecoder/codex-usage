@@ -24,8 +24,8 @@ The single source file is organized as four layers, top to bottom:
 
 1. **Domain models** — plain Swift structs for the parsed shape of the data.
 2. **Reader / store** — file I/O and parsing, plus an `ObservableObject` that polls.
-3. **SwiftUI views** — the panel UI rendered into both an `NSWindow` (panel) and an `NSPopover`.
-4. **AppDelegate** — wires the status item, popover, and panel; bridges the data store into AppKit.
+3. **SwiftUI views** — the panel UI rendered into an `NSPopover`.
+4. **AppDelegate** — wires the status item and popover; bridges the data store into AppKit.
 
 ### 1. Domain models
 
@@ -81,17 +81,16 @@ UsagePanel
 | Object | Configuration |
 | --- | --- |
 | `NSStatusItem` | Variable-length, template SF Symbol `gauge.with.dots.needle.50percent`, attributed title using `NSFont.monospacedDigitSystemFont` so the percent doesn't jitter. Action: `togglePopover`. |
-| `NSPopover` | `behavior = .transient`, hosts `UsagePanel`. No forced appearance — inherits system. |
-| `NSPanel` | The main window. Style mask `[.titled, .closable, .utilityWindow, .nonactivatingPanel, .hudWindow]`. `isFloatingPanel = true`, `becomesKeyOnlyIfNeeded = true`, `collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]`. Movable by background, follows system light/dark. |
+| `NSPopover` | `behavior = .transient`, hosts `UsagePanel`, and includes Refresh and Quit controls in the panel header. |
 
 A `Combine` `sink` on `store.$snapshot` re-renders the menu-bar title whenever a fresh snapshot is published.
 
 ## Lifecycle
 
-1. `main` (bottom of [main.swift](Sources/CodexUsageWatcher/main.swift)) checks for the `--snapshot` CLI flag — if present, runs one read, prints `key=value` lines, exits. Otherwise it instantiates `NSApplication`, attaches `AppDelegate`, sets `.regular` activation policy, and runs.
-2. `applicationDidFinishLaunching` starts the store (begins polling), configures the status item, popover, and panel, then shows the panel.
-3. The store publishes a new `UsageSnapshot` every 30 s; the menu-bar title updates via the Combine sink, and the panel/popover update via SwiftUI's normal `@ObservedObject` re-render path.
-4. `applicationShouldHandleReopen` re-shows the panel when the user re-launches a running instance from Finder/Dock.
+1. `main` (bottom of [main.swift](Sources/CodexUsageWatcher/main.swift)) checks for the `--snapshot` CLI flag — if present, runs one read, prints `key=value` lines, exits. Otherwise it instantiates `NSApplication`, attaches `AppDelegate`, sets `.accessory` activation policy, and runs.
+2. `applicationDidFinishLaunching` starts the store (begins polling), configures the status item, and prepares the popover without showing it automatically.
+3. The store publishes a new `UsageSnapshot` every 30 s; the menu-bar title updates via the Combine sink, and the popover updates via SwiftUI's normal `@ObservedObject` re-render path.
+4. `applicationShouldHandleReopen` re-shows the popover when the user re-launches a running instance from Finder.
 
 ## CLI
 
